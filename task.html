@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Task Manager</h2>
+        <input type="text" id="taskTitle" placeholder="Enter task title">
+        <select id="taskPriority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+        </select>
+        <button id="addTask" class="add-button">Add Task</button>
+        
+        <h3>Filters</h3>
+        <select id="filterStatus">
+            <option value="all">All</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+        </select>
+        <select id="sortTasks">
+            <option value="default">Sort By</option>
+            <option value="priority">Priority</option>
+            <option value="title">Title</option>
+        </select>
+        
+        <h3>Tasks</h3>
+        <div id="taskList" class="sortable"></div>
+    </div>
+    
+    <script>
+        $(document).ready(function() {
+            loadTasks();
+
+            $("#addTask").click(function() {
+                let title = $("#taskTitle").val();
+                let priority = $("#taskPriority").val();
+                if (title.trim() !== "") {
+                    let task = { title, priority, completed: false };
+                    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+                    tasks.push(task);
+                    localStorage.setItem("tasks", JSON.stringify(tasks));
+                    loadTasks();
+                    $("#taskTitle").val("");
+                }
+            });
+
+            $(document).on("click", ".delete-button", function() {
+                let index = $(this).data("index");
+                let tasks = JSON.parse(localStorage.getItem("tasks"));
+                tasks.splice(index, 1);
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                loadTasks();
+            });
+
+            $(document).on("change", ".task-checkbox", function() {
+                let index = $(this).data("index");
+                let tasks = JSON.parse(localStorage.getItem("tasks"));
+                tasks[index].completed = $(this).prop("checked");
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                loadTasks();
+            });
+
+            $("#filterStatus, #sortTasks").change(function() {
+                loadTasks();
+            });
+
+            function loadTasks() {
+                let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+                let filter = $("#filterStatus").val();
+                let sort = $("#sortTasks").val();
+
+                if (filter !== "all") {
+                    tasks = tasks.filter(task => filter === "completed" ? task.completed : !task.completed);
+                }
+
+                if (sort === "priority") {
+                    tasks.sort((a, b) => ["low", "medium", "high"].indexOf(a.priority) - ["low", "medium", "high"].indexOf(b.priority));
+                } else if (sort === "title") {
+                    tasks.sort((a, b) => a.title.localeCompare(b.title));
+                }
+
+                $("#taskList").html("");
+                tasks.forEach((task, index) => {
+                    let taskHTML = `
+                        <div class="task-card draggable" data-index="${index}">
+                            <input type="checkbox" class="task-checkbox" data-index="${index}" ${task.completed ? 'checked' : ''}>
+                            <span class="task-title ${task.priority}">${task.title}</span>
+                            <button class="delete-button" data-index="${index}">Delete</button>
+                        </div>`;
+                    $("#taskList").append(taskHTML);
+                });
+                $("#taskList").sortable({ update: saveOrder });
+            }
+
+            function saveOrder() {
+                let newTasks = [];
+                $("#taskList .task-card").each(function() {
+                    let index = $(this).data("index");
+                    let tasks = JSON.parse(localStorage.getItem("tasks"));
+                    newTasks.push(tasks[index]);
+                });
+                localStorage.setItem("tasks", JSON.stringify(newTasks));
+            }
+        });
+    </script>
+</body>
+</html>
